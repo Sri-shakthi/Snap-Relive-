@@ -1,0 +1,7 @@
+{
+  "name": "SnapRelive",
+  "description": "An elegant, premium event photo system that uses face matching to help guests find their photos instantly. Perfect for weddings and high-end celebrations.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
