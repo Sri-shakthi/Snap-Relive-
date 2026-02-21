@@ -12,6 +12,12 @@ const confirmPhotoSchema = Joi.object({
   s3Key: Joi.string().trim().required()
 });
 
+const photoDownloadSchema = Joi.object({
+  photoId: Joi.string().trim().required(),
+  userId: Joi.string().trim().required(),
+  eventId: Joi.string().trim().required()
+});
+
 export interface ValidatePhotoPresignInput {
   eventId: string;
   contentType: string;
@@ -21,6 +27,12 @@ export interface ValidatePhotoConfirmInput {
   eventId: string;
   bucket: string;
   s3Key: string;
+}
+
+export interface ValidatePhotoDownloadInput {
+  photoId: string;
+  userId: string;
+  eventId: string;
 }
 
 export const validatePhotoPresign = (payload: unknown): { value: ValidatePhotoPresignInput } => {
@@ -46,5 +58,18 @@ export const validatePhotoConfirm = (payload: unknown): { value: ValidatePhotoCo
     throw new AppError(400, 'VALIDATION_ERROR', 'Invalid photo confirm payload', result.error.details);
   } else {
     return { value: result.value as ValidatePhotoConfirmInput };
+  }
+};
+
+export const validatePhotoDownload = (payload: unknown): { value: ValidatePhotoDownloadInput } => {
+  const result = photoDownloadSchema.validate(payload, {
+    abortEarly: false,
+    stripUnknown: true
+  });
+
+  if (result.error) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'Invalid photo download payload', result.error.details);
+  } else {
+    return { value: result.value as ValidatePhotoDownloadInput };
   }
 };

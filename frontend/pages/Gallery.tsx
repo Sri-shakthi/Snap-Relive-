@@ -87,18 +87,11 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
     setError('');
 
     try {
-      const headers: HeadersInit = {};
-      if (photo.downloadUrl.includes('ngrok-free.app')) {
-        headers['ngrok-skip-browser-warning'] = '1';
-      }
-
-      const response = await fetch(photo.downloadUrl, { headers });
-
-      if (!response.ok) {
-        throw new Error(`Download failed (${response.status})`);
-      }
-
-      const blob = await response.blob();
+      const blob = await api.downloadPhotoBlob({
+        photoId: photo.id,
+        userId,
+        eventId
+      });
       const filename = `snapshots-photo-${photo.id}.jpg`;
 
       if (isMobileClient && navigator.share) {

@@ -48,3 +48,22 @@ export const listMatchesForUserEvent = async (params: {
     }
   });
 };
+
+export const findMatchedPhotoForUserEvent = async (params: {
+  userId: string;
+  eventId: string;
+  photoId: string;
+}) => {
+  return prisma.matchResult.findUnique({
+    where: {
+      userId_eventId_photoId: {
+        userId: params.userId,
+        eventId: params.eventId,
+        photoId: params.photoId
+      }
+    },
+    include: {
+      photo: true
+    }
+  });
+};

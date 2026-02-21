@@ -1,7 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
 import { findEventById } from '../data-access/events.dao.js';
+import { findMatchedPhotoForUserEvent } from '../data-access/matches.dao.js';
 import { upsertPhotoPending } from '../data-access/photos.dao.js';
 import { createPresignedPutUrl } from '../services/awsS3.js';
+import { getObjectAsBuffer } from '../services/awsS3.js';
 import { getQueueService } from '../services/queue.js';
 import { AppError } from '../utils/errors.js';
 
@@ -14,6 +16,12 @@ export interface PhotoConfirmControllerInput {
   eventId: string;
   bucket: string;
   s3Key: string;
+}
+
+export interface PhotoDownloadControllerInput {
+  photoId: string;
+  userId: string;
+  eventId: string;
 }
 
 export const presignPhotoController = async (input: PhotoPresignControllerInput) => {
@@ -56,5 +64,28 @@ export const confirmPhotoController = async (input: PhotoConfirmControllerInput)
   return {
     photoId: photo.id,
     status: photo.status
+  };
+};
+
+export const downloadPhotoController = async (input: PhotoDownloadControllerInput) => {
+  const match = await findMatchedPhotoForUserEvent({
+    userId: input.userId,
+    eventId: input.eventId,
+    photoId: input.photoId
+  });
+
+  if (!match) {
+    throw new AppError(404, 'NOT_FOUND', 'Photo not found for this user and event');
+  }
+
+  const fileBuffer = await getObjectAsBuffer({
+    bucket: match.photo.s3Bucket,
+    s3Key: match.photo.s3Key
+  });
+
+  return {
+    fileBuffer,
+    contentType: 'image/jpeg',
+    filename: `snapshots-photo-${match.photo.id}.jpg`
   };
 };

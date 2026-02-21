@@ -184,6 +184,33 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(input)
     });
+  },
+
+  downloadPhotoBlob: async (input: { photoId: string; userId: string; eventId: string }) => {
+    const params = new URLSearchParams({
+      userId: input.userId,
+      eventId: input.eventId
+    });
+
+    const response = await fetch(
+      `${API_BASE_URL}/photos/${encodeURIComponent(input.photoId)}/download?${params.toString()}`,
+      {
+        headers: {
+          'ngrok-skip-browser-warning': '1'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const payload = (await response.json()) as ApiErrorPayload;
+        throw new Error(payload.error?.message || 'Photo download failed');
+      }
+      throw new Error(`Photo download failed (${response.status})`);
+    }
+
+    return response.blob();
   }
 };
 
