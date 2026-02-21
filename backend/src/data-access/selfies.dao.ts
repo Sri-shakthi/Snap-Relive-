@@ -54,3 +54,42 @@ export const markSelfieFailed = async (id: string, errorMessage: string) => {
 };
 
 export const findSelfieById = async (id: string) => prisma.userSelfie.findUnique({ where: { id } });
+
+export const findSelfieByUserEvent = async (userId: string, eventId: string) => {
+  return prisma.userSelfie.findUnique({
+    where: {
+      userId_eventId: {
+        userId,
+        eventId
+      }
+    }
+  });
+};
+
+export const markSelfiePendingForRefresh = async (id: string) => {
+  return prisma.userSelfie.update({
+    where: { id },
+    data: {
+      status: ProcessingStatus.PENDING,
+      errorMessage: null
+    }
+  });
+};
+
+export const listSelfiesForEvent = async (eventId: string) => {
+  return prisma.userSelfie.findMany({
+    where: {
+      eventId,
+      status: {
+        in: [ProcessingStatus.PENDING, ProcessingStatus.PROCESSED]
+      }
+    },
+    select: {
+      id: true,
+      userId: true,
+      eventId: true,
+      s3Bucket: true,
+      s3Key: true
+    }
+  });
+};

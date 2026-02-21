@@ -12,6 +12,13 @@ enum ProcessingStatus {
   FAILED
 }
 
+enum DownloadJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String?       @unique
@@ -19,6 +26,7 @@ model User {
   createdAt    DateTime      @default(now())
   selfies      UserSelfie[]
   matchResults MatchResult[]
+  downloads    DownloadJob[]
 
   @@index([createdAt])
 }
@@ -33,6 +41,7 @@ model Event {
   photos      Photo[]
   photoFaces  PhotoFace[]
   matchResult MatchResult[]
+  downloads   DownloadJob[]
 
   @@index([startsAt])
   @@index([createdAt])
@@ -62,6 +71,8 @@ model Photo {
   eventId      String
   s3Bucket     String
   s3Key        String
+  thumbnailS3Key String?
+  previewS3Key String?
   status       ProcessingStatus @default(PENDING)
   errorMessage String?          @db.VarChar(1024)
   createdAt    DateTime         @default(now())
@@ -73,6 +84,24 @@ model Photo {
   @@unique([eventId, s3Key])
   @@index([eventId, status])
   @@index([eventId, createdAt])
+}
+
+model DownloadJob {
+  id               String          @id @default(cuid())
+  userId           String
+  eventId          String
+  selectedPhotoIds Json
+  status           DownloadJobStatus @default(PENDING)
+  s3Bucket         String?
+  s3Key            String?
+  errorMessage     String?          @db.VarChar(1024)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event            Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([userId, eventId, createdAt])
+  @@index([eventId, status])
 }
 
 model PhotoFace {

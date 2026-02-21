@@ -7,21 +7,33 @@ export interface CreateEventControllerInput {
   endsAt: string;
 }
 
-export const createEventController = async (input: CreateEventControllerInput) => {
-  const event = await createEvent({
-    name: input.name,
-    startsAt: new Date(input.startsAt),
-    endsAt: new Date(input.endsAt)
-  });
+interface CreateEventDeps {
+  createEventFn: typeof createEvent;
+  ensureCollectionFn: typeof ensureCollection;
+}
 
-  ensureCollection(event.id).catch((error) => {
-    console.error('Failed to ensure Rekognition collection', {
-      eventId: event.id,
-      error
+export const createEventControllerFactory = (deps: CreateEventDeps) => {
+  return async (input: CreateEventControllerInput) => {
+    const event = await deps.createEventFn({
+      name: input.name,
+      startsAt: new Date(input.startsAt),
+      endsAt: new Date(input.endsAt)
     });
-  });
 
-  return {
-    event
+    deps.ensureCollectionFn(event.id).catch((error) => {
+      console.error('Failed to ensure Rekognition collection', {
+        eventId: event.id,
+        error
+      });
+    });
+
+    return {
+      event
+    };
   };
 };
+
+export const createEventController = createEventControllerFactory({
+  createEventFn: createEvent,
+  ensureCollectionFn: ensureCollection
+});

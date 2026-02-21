@@ -1,15 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import Joi from 'joi';
+import { config } from '../config/index.js';
 import { AppError, isAppError } from '../utils/errors.js';
 
 const isAwsError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const errorRecord = error as Record<string, unknown>;
+  const errorName = typeof errorRecord.name === 'string' ? errorRecord.name : '';
+
   return Boolean(
-    error &&
-      typeof error === 'object' &&
-      ('$$metadata' in error ||
-        ('name' in error && typeof (error as Record<string, unknown>).name === 'string' &&
-          (error as Record<string, unknown>).name.toString().includes('Exception')))
+    '$$metadata' in errorRecord || errorName.includes('Exception')
   );
 };
 
@@ -30,6 +34,13 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ): Response => {
+  console.error('Unhandled request error', {
+    requestId: req.requestId,
+    path: req.path,
+    method: req.method,
+    error
+  });
+
   if (isAppError(error)) {
     return res.status(error.statusCode).json({
       success: false,
@@ -67,6 +78,18 @@ export const errorHandler = (
       });
     }
 
+    if (error.code === 'P2021') {
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Database table not found. Run Prisma migrations.',
+          details: error.meta
+        },
+        requestId: req.requestId
+      });
+    }
+
     if (error.code === 'P2025') {
       return res.status(404).json({
         success: false,
@@ -78,6 +101,18 @@ export const errorHandler = (
         requestId: req.requestId
       });
     }
+  }
+
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Database initialization failed',
+        details: config.app.isProduction ? undefined : error.message
+      },
+      requestId: req.requestId
+    });
   }
 
   if (isAwsError(error)) {

@@ -3,7 +3,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 
-const Help: React.FC = () => {
+interface HelpProps {
+  hasSession: boolean;
+}
+
+const Help: React.FC<HelpProps> = ({ hasSession }) => {
   const faqs = [
     {
       q: "Why do you need a selfie?",
@@ -45,7 +49,7 @@ const Help: React.FC = () => {
         </div>
 
         <div className="pt-10">
-          <Link to="/register" className="block w-full text-center bg-stone-900 text-white py-5 rounded-2xl font-bold">
+          <Link to={hasSession ? '/register' : '/'} className="block w-full text-center bg-stone-900 text-white py-5 rounded-2xl font-bold">
              Got it, let's start
           </Link>
         </div>

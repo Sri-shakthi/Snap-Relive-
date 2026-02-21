@@ -10,32 +10,55 @@ interface CameraProps {
 const Camera: React.FC<CameraProps> = ({ onCapture, onCancel }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  }, []);
 
   const startCamera = useCallback(async () => {
     try {
+      stopCamera();
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user' },
         audio: false,
       });
-      setStream(mediaStream);
+      streamRef.current = mediaStream;
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
     } catch (err) {
       setError('Camera access denied. Please enable permissions.');
     }
-  }, []);
+  }, [stopCamera]);
 
   useEffect(() => {
     startCamera();
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      stopCamera();
+    };
+  }, [startCamera, stopCamera]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        stopCamera();
       }
     };
-  }, [startCamera]);
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [stopCamera]);
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -45,10 +68,18 @@ const Camera: React.FC<CameraProps> = ({ onCapture, onCancel }) => {
         canvasRef.current.height = videoRef.current.videoHeight;
         context.drawImage(videoRef.current, 0, 0);
         canvasRef.current.toBlob((blob) => {
-          if (blob) onCapture(blob);
+          if (blob) {
+            stopCamera();
+            onCapture(blob);
+          }
         }, 'image/jpeg', 0.8);
       }
     }
+  };
+
+  const handleCancel = () => {
+    stopCamera();
+    onCancel();
   };
 
   if (error) {
@@ -56,7 +87,7 @@ const Camera: React.FC<CameraProps> = ({ onCapture, onCancel }) => {
       <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-6">
         <div className="p-4 bg-red-50 text-red-600 rounded-xl">{error}</div>
         <button
-          onClick={onCancel}
+          onClick={handleCancel}
           className="text-stone-500 font-medium"
         >
           Cancel and use Gallery
@@ -84,7 +115,7 @@ const Camera: React.FC<CameraProps> = ({ onCapture, onCancel }) => {
       <div className="absolute bottom-6 inset-x-0 flex justify-center items-center gap-8">
         <motion.button
           whileTap={{ scale: 0.9 }}
-          onClick={onCancel}
+          onClick={handleCancel}
           className="w-12 h-12 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-md text-white"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

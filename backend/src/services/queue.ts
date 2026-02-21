@@ -7,15 +7,16 @@ import {
 import { randomUUID } from 'node:crypto';
 import { config } from '../config/index.js';
 
-export type JobType = 'PROCESS_PHOTO' | 'PROCESS_SELFIE';
+export type JobType = 'PROCESS_PHOTO' | 'PROCESS_SELFIE' | 'PROCESS_DOWNLOAD';
 
 export interface QueueJobPayload {
   photoId?: string;
   selfieId?: string;
-  eventId: string;
+  downloadJobId?: string;
+  eventId?: string;
   userId?: string;
-  bucket: string;
-  s3Key: string;
+  bucket?: string;
+  s3Key?: string;
 }
 
 export interface QueueJob {

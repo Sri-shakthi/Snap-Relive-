@@ -56,11 +56,16 @@ export const createPhotoFaces = async (faces: CreatePhotoFaceInput[]) => {
   });
 };
 
-export const markPhotoProcessed = async (photoId: string) => {
+export const markPhotoProcessed = async (
+  photoId: string,
+  variants?: { thumbnailS3Key?: string; previewS3Key?: string }
+) => {
   return prisma.photo.update({
     where: { id: photoId },
     data: {
       status: ProcessingStatus.PROCESSED,
+      thumbnailS3Key: variants?.thumbnailS3Key,
+      previewS3Key: variants?.previewS3Key,
       errorMessage: null
     }
   });

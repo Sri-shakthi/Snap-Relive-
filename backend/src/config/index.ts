@@ -12,6 +12,8 @@ export const config = {
     secretAccessKey: env.awsSecretAccessKey,
     s3Bucket: env.awsS3Bucket,
     s3PresignExpires: env.awsS3PresignExpires,
+    s3GetExpires: env.awsS3GetExpires,
+    cloudFrontBaseUrl: env.cloudFrontBaseUrl,
     collectionPrefix: env.rekognitionCollectionPrefix,
     sqsQueueUrl: env.awsSqsQueueUrl
   },
@@ -23,5 +25,12 @@ export const config = {
   rateLimit: {
     windowMs: env.rateLimitWindowMs,
     max: env.rateLimitMax
+  },
+  rematch: {
+    debounceMs: env.rematchDebounceMs,
+    batchSize: env.rematchBatchSize
+  },
+  matches: {
+    refreshCooldownMs: env.matchRefreshCooldownMs
   }
 };

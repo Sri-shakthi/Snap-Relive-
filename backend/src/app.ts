@@ -41,6 +41,18 @@ const openApiSpec = {
     },
     '/matches': {
       get: { summary: 'Get matches', responses: { '200': { description: 'OK' } } }
+    },
+    '/matches/refresh': {
+      post: { summary: 'Queue manual rematch', responses: { '202': { description: 'Accepted' } } }
+    },
+    '/downloads': {
+      post: { summary: 'Queue ZIP download job', responses: { '202': { description: 'Accepted' } } }
+    },
+    '/downloads/links': {
+      post: { summary: 'Get direct links for selected photos', responses: { '200': { description: 'OK' } } }
+    },
+    '/downloads/{downloadId}': {
+      get: { summary: 'Get ZIP download job status', responses: { '200': { description: 'OK' } } }
     }
   }
 };

@@ -1,38 +1,65 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import Camera from '../components/Camera';
-import { mockApi } from '../services/mockApi';
+import { api, uploadToPresignedUrl } from '../services/api';
 
 interface SelfieProps {
+  eventId: string;
+  userId: string;
   onComplete: (selfie: Blob | string) => void;
 }
 
-const Selfie: React.FC<SelfieProps> = ({ onComplete }) => {
+const Selfie: React.FC<SelfieProps> = ({ eventId, userId, onComplete }) => {
   const navigate = useNavigate();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!eventId || !userId) {
+      navigate('/');
+    }
+  }, [eventId, userId, navigate]);
 
   const handleCapture = (blob: Blob) => {
     const url = URL.createObjectURL(blob);
     setPreview(url);
     setCapturedBlob(blob);
     setIsCameraActive(false);
+    setError('');
   };
 
   const handleFinish = async () => {
-    if (!capturedBlob) return;
+    if (!capturedBlob || !eventId || !userId) return;
+
     setIsUploading(true);
+    setError('');
+
     try {
-      await mockApi.uploadSelfie(capturedBlob);
+      const presigned = await api.presignSelfieUpload({
+        userId,
+        eventId,
+        contentType: capturedBlob.type || 'image/jpeg'
+      });
+
+      await uploadToPresignedUrl(presigned.uploadUrl, capturedBlob, capturedBlob.type || 'image/jpeg');
+
+      await api.confirmSelfieUpload({
+        userId,
+        eventId,
+        bucket: presigned.bucket,
+        s3Key: presigned.s3Key
+      });
+
       onComplete(capturedBlob);
       navigate('/waiting');
-    } catch (err) {
-      alert("Error uploading selfie. Please try again.");
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : 'Error uploading selfie.';
+      setError(message);
     } finally {
       setIsUploading(false);
     }
@@ -66,13 +93,8 @@ const Selfie: React.FC<SelfieProps> = ({ onComplete }) => {
           </div>
         ) : isCameraActive ? (
           <div className="flex-1 flex flex-col space-y-6 pt-4">
-             <Camera 
-                onCapture={handleCapture}
-                onCancel={() => setIsCameraActive(false)}
-             />
-             <div className="text-center text-stone-400 text-sm">
-                Center your face in the guide.
-             </div>
+            <Camera onCapture={handleCapture} onCancel={() => setIsCameraActive(false)} />
+            <div className="text-center text-stone-400 text-sm">Center your face in the guide.</div>
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center space-y-8 py-8">
@@ -89,17 +111,25 @@ const Selfie: React.FC<SelfieProps> = ({ onComplete }) => {
                 className="w-full bg-stone-900 text-white py-5 rounded-2xl text-lg font-medium shadow-xl flex items-center justify-center"
               >
                 {isUploading ? (
-                   <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : "Finish Registration"}
+                  <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  'Finish Registration'
+                )}
               </motion.button>
-              
+
               <button
                 disabled={isUploading}
-                onClick={() => { setPreview(null); setCapturedBlob(null); setIsCameraActive(true); }}
+                onClick={() => {
+                  setPreview(null);
+                  setCapturedBlob(null);
+                  setIsCameraActive(true);
+                }}
                 className="w-full text-stone-500 font-medium py-2"
               >
                 Retake Photo
               </button>
+
+              {error && <p className="text-sm text-red-500 text-center">{error}</p>}
             </div>
           </div>
         )}

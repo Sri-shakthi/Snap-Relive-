@@ -37,6 +37,8 @@ Prisma Migrate reads `DATABASE_URL` from `prisma.config.ts`.
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_S3_BUCKET`
+- `AWS_S3_GET_EXPIRES` (recommended: `86400`)
+- `CLOUDFRONT_BASE_URL` (optional but recommended for faster image delivery)
 
 ## Run MySQL via Docker
 ```bash
@@ -94,16 +96,80 @@ POST /api/v1/photos/confirm
 GET /api/v1/matches?userId=...&eventId=...&cursor=...&limit=20
 ```
 
+5. Queue a manual rematch (cooldown protected)
+```http
+POST /api/v1/matches/refresh
+Body: { "userId": "...", "eventId": "..." }
+```
+
+6. Download selected photos
+```http
+POST /api/v1/downloads
+Body: { "userId": "...", "eventId": "...", "photoIds": ["photo1", "photo2"] }
+```
+```http
+GET /api/v1/downloads/:downloadId?userId=...
+```
+```http
+POST /api/v1/downloads/links
+Body: { "userId": "...", "eventId": "...", "photoIds": ["photo1", "photo2"] }
+```
+
+## Curl E2E Script
+Run the full flow (create event -> presign -> upload -> confirm -> matches -> health):
+
+```bash
+cd backend
+./scripts/e2e-curl-flow.sh ./selfie.jpg ./event-photo-1.jpg
+```
+
+Optional overrides:
+
+```bash
+BASE_URL="http://localhost:4000/api/v1" USER_ID="user_123" ./scripts/e2e-curl-flow.sh ./selfie.jpg ./event-photo-1.jpg
+```
+
 ## Queue Notes
 - `QUEUE_PROVIDER=memory`: local fallback queue.
 - `QUEUE_PROVIDER=sqs`: production mode with external queue for horizontally-scaled API/worker instances.
+
+## CloudFront Setup (Recommended)
+Use CloudFront for faster image delivery and better mobile performance.
+
+1. Create a CloudFront distribution:
+- Origin: your S3 bucket
+- Origin access: `Origin Access Control (OAC)` (keep S3 bucket private)
+
+2. Distribution behavior/cache policy:
+- Query strings: `none`
+- Headers: minimal
+- TTL: start with `1 day` and tune later
+
+3. Update backend env:
+```bash
+CLOUDFRONT_BASE_URL=https://<your-distribution-domain>
+AWS_S3_GET_EXPIRES=86400
+```
+
+4. Restart API/worker after env changes.
+
+5. Cache invalidation:
+- Not needed for new uploads when object keys are unique.
+- Invalidate only if you overwrite the same key.
+
+The matches/download APIs will return CloudFront URLs when `CLOUDFRONT_BASE_URL` is set, and fall back to presigned S3 URLs otherwise.
+
+## Mobile Download UX
+- Primary mobile flow: `Save Photos` (opens selected photos directly, no ZIP extraction needed).
+- Desktop flow: `Download Selected` (ZIP).
+- Mobile still exposes `Download ZIP (Advanced)` as a secondary option.
 
 ## Scaling Notes
 - Do not run Rekognition in request path for large uploads.
 - Use SQS (or Redis streams) for durable job delivery.
 - Run multiple worker replicas for parallel processing.
 - Keep API stateless; autoscale independently of workers.
-- Add CDN in front of S3 presigned GET where needed.
+- Add CloudFront in front of S3 and set `CLOUDFRONT_BASE_URL` for faster gallery loads.
 
 ## Tests
 ```bash
