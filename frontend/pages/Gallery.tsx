@@ -17,10 +17,9 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isSelectMode, setIsSelectMode] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<Photo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadingPhotoId, setDownloadingPhotoId] = useState<string | null>(null);
   const [isRefreshingMatches, setIsRefreshingMatches] = useState(false);
   const [isMobileClient, setIsMobileClient] = useState(false);
 
@@ -82,87 +81,37 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
     }
   };
 
-  const handleToggleSelect = (id: string) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setSelectedIds(next);
-  };
-
-  const handleDownloadSelected = async () => {
-    if (!eventId || !userId || selectedIds.size === 0) {
-      return;
-    }
-
+  const handleDownloadPhoto = async (photo: Photo) => {
     setIsDownloading(true);
+    setDownloadingPhotoId(photo.id);
     setError('');
 
     try {
-      const createResult = await api.createDownloadJob({
-        userId,
-        eventId,
-        photoIds: Array.from(selectedIds)
+      const response = await fetch(photo.downloadUrl, {
+        headers: {
+          'ngrok-skip-browser-warning': '1'
+        }
       });
 
-      const startedAt = Date.now();
-      const timeoutMs = 120000;
-
-      while (Date.now() - startedAt < timeoutMs) {
-        const status = await api.getDownloadJob({
-          downloadId: createResult.downloadId,
-          userId
-        });
-
-        if (status.status === 'COMPLETED' && status.downloadUrl) {
-          window.open(status.downloadUrl, '_blank', 'noopener,noreferrer');
-          setSelectedIds(new Set());
-          setIsSelectMode(false);
-          return;
-        }
-
-        if (status.status === 'FAILED') {
-          throw new Error(status.errorMessage || 'Download preparation failed');
-        }
-
-        await wait(1800);
+      if (!response.ok) {
+        throw new Error(`Download failed (${response.status})`);
       }
 
-      throw new Error('Download timed out. Please try again.');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = blobUrl;
+      anchor.download = `snaprelive-photo-${photo.id}.jpg`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(blobUrl);
     } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : 'Unable to prepare ZIP download.';
+      const message = requestError instanceof Error ? requestError.message : 'Unable to download photo.';
       setError(message);
     } finally {
       setIsDownloading(false);
-    }
-  };
-
-  const handleSaveSelectedMobile = async () => {
-    if (!eventId || !userId || selectedIds.size === 0) {
-      return;
-    }
-
-    setIsDownloading(true);
-    setError('');
-
-    try {
-      const linksResult = await api.createDownloadLinks({
-        userId,
-        eventId,
-        photoIds: Array.from(selectedIds)
-      });
-
-      for (const link of linksResult.links) {
-        window.open(link.downloadUrl, '_blank', 'noopener,noreferrer');
-        await wait(400);
-      }
-
-      setSelectedIds(new Set());
-      setIsSelectMode(false);
-    } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : 'Unable to open selected photos.';
-      setError(message);
-    } finally {
-      setIsDownloading(false);
+      setDownloadingPhotoId(null);
     }
   };
 
@@ -184,26 +133,13 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
       <div className="flex-1 flex flex-col space-y-6">
         <div className="sticky top-[72px] bg-[#FAFAF9]/80 backdrop-blur-md z-40 py-2 flex items-center justify-between">
           <h2 className="text-xl font-bold text-stone-900">My Matches ({sortedPhotos.length})</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleManualRefresh}
-              disabled={isRefreshingMatches}
-              className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-stone-300 text-stone-700"
-            >
-              {isRefreshingMatches ? 'Refreshing...' : 'Manual Rematch'}
-            </button>
-            <button
-              onClick={() => {
-                setIsSelectMode(!isSelectMode);
-                setSelectedIds(new Set());
-              }}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                isSelectMode ? 'bg-stone-900 text-white' : 'text-stone-500 bg-stone-100'
-              }`}
-            >
-              {isSelectMode ? 'Cancel' : 'Select'}
-            </button>
-          </div>
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshingMatches}
+            className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-stone-300 text-stone-700"
+          >
+            {isRefreshingMatches ? 'Refreshing...' : 'Manual Rematch'}
+          </button>
         </div>
 
         <div className="flex-1 min-h-[400px]">
@@ -231,69 +167,20 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
                 <motion.div
                   key={photo.id}
                   layoutId={photo.id}
-                  onClick={() => (isSelectMode ? handleToggleSelect(photo.id) : openViewer(photo))}
+                  onClick={() => openViewer(photo)}
                   className="relative aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer shadow-sm active:scale-95 transition-transform"
                 >
                   <img
-                    src={photo.thumbnailUrl}
+                    src={isMobileClient ? photo.previewUrl : photo.thumbnailUrl}
                     alt="Gallery"
                     loading="lazy"
                     className="w-full h-full object-cover"
                   />
-
-                  {isSelectMode && (
-                    <div className="absolute top-2 right-2">
-                      <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          selectedIds.has(photo.id) ? 'bg-stone-900 border-stone-900' : 'bg-white/50 border-white'
-                        }`}
-                      >
-                        {selectedIds.has(photo.id) && (
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </motion.div>
               ))}
             </div>
           )}
         </div>
-
-        <AnimatePresence>
-          {isSelectMode && selectedIds.size > 0 && (
-            <motion.div
-              initial={{ y: 100 }}
-              animate={{ y: 0 }}
-              exit={{ y: 100 }}
-              className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-stone-100 p-6 z-50 flex items-center justify-between safe-area-inset-bottom"
-            >
-              <div className="flex flex-col">
-                <span className="text-xl font-bold text-stone-900">{selectedIds.size}</span>
-                <span className="text-xs text-stone-400 font-medium">Selected</span>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={isMobileClient ? handleSaveSelectedMobile : handleDownloadSelected}
-                  className="bg-stone-900 text-white px-6 py-3 rounded-xl font-bold shadow-lg"
-                >
-                  {isMobileClient ? 'Save Photos' : 'Download Selected'}
-                </motion.button>
-                {isMobileClient && (
-                  <button
-                    onClick={handleDownloadSelected}
-                    className="text-xs text-stone-500 underline underline-offset-2"
-                  >
-                    Download ZIP (Advanced)
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <AnimatePresence>
           {viewingPhoto && (
@@ -321,14 +208,13 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
               </div>
 
               <div className="sticky bottom-0 inset-x-0 p-4 flex justify-center bg-gradient-to-t from-black/60 to-transparent">
-                <a
-                  href={viewingPhoto.downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-white text-stone-900 px-5 py-3 rounded-xl font-semibold"
+                <button
+                  onClick={() => handleDownloadPhoto(viewingPhoto)}
+                  disabled={isDownloading && downloadingPhotoId === viewingPhoto.id}
+                  className="bg-white text-stone-900 px-5 py-3 rounded-xl font-semibold min-w-40"
                 >
-                  Open Full Quality
-                </a>
+                  {isDownloading && downloadingPhotoId === viewingPhoto.id ? 'Downloading...' : 'Download'}
+                </button>
               </div>
             </motion.div>
           )}
@@ -343,9 +229,7 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
                 className="bg-white p-10 rounded-3xl flex flex-col items-center gap-6 shadow-2xl"
               >
                 <div className="w-16 h-16 border-4 border-stone-100 border-t-stone-900 rounded-full animate-spin" />
-                <p className="font-bold text-stone-900">
-                  {isMobileClient ? 'Opening selected photos...' : 'Preparing ZIP download...'}
-                </p>
+                <p className="font-bold text-stone-900">Downloading photo...</p>
               </motion.div>
             </div>
           )}

@@ -104,6 +104,7 @@ POST /api/v1/matches/refresh
 Body: { "userId": "...", "eventId": "..." }
 ```
 
+<!--
 6. Download selected photos
 ```http
 POST /api/v1/downloads
@@ -116,6 +117,7 @@ GET /api/v1/downloads/:downloadId?userId=...
 POST /api/v1/downloads/links
 Body: { "userId": "...", "eventId": "...", "photoIds": ["photo1", "photo2"] }
 ```
+-->
 
 ## Curl E2E Script
 Run the full flow (create event -> presign -> upload -> confirm -> matches -> health):

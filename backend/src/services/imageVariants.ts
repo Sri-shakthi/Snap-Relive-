@@ -8,8 +8,8 @@ export interface ImageVariantResult {
 export const buildImageVariants = async (inputBuffer: Buffer): Promise<ImageVariantResult> => {
   const thumbnail = await sharp(inputBuffer)
     .rotate()
-    .resize({ width: 240, withoutEnlargement: true, fit: 'inside' })
-    .jpeg({ quality: 72, mozjpeg: true })
+    .resize({ width: 420, withoutEnlargement: true, fit: 'inside' })
+    .jpeg({ quality: 82, mozjpeg: true })
     .toBuffer();
 
   const preview = await sharp(inputBuffer)
