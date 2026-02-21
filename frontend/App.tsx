@@ -11,7 +11,7 @@ import UploadPhotos from './pages/UploadPhotos';
 import Organizer from './pages/Organizer';
 import { GuestDetails } from './types';
 
-const STORAGE_KEY = 'snaprelive-session-v1';
+const STORAGE_KEY = 'snapshots-session-v1';
 
 interface PersistedSession {
   eventId: string;

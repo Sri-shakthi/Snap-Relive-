@@ -87,11 +87,12 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
     setError('');
 
     try {
-      const response = await fetch(photo.downloadUrl, {
-        headers: {
-          'ngrok-skip-browser-warning': '1'
-        }
-      });
+      const headers: HeadersInit = {};
+      if (photo.downloadUrl.includes('ngrok-free.app')) {
+        headers['ngrok-skip-browser-warning'] = '1';
+      }
+
+      const response = await fetch(photo.downloadUrl, { headers });
 
       if (!response.ok) {
         throw new Error(`Download failed (${response.status})`);
@@ -101,14 +102,23 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
       const blobUrl = window.URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = blobUrl;
-      anchor.download = `snaprelive-photo-${photo.id}.jpg`;
+      anchor.download = `snapshots-photo-${photo.id}.jpg`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(blobUrl);
     } catch (requestError) {
+      // Fallback to direct navigation download without popup.
+      const anchor = document.createElement('a');
+      anchor.href = photo.downloadUrl;
+      anchor.target = '_self';
+      anchor.rel = 'noreferrer';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+
       const message = requestError instanceof Error ? requestError.message : 'Unable to download photo.';
-      setError(message);
+      setError(`Direct download fallback used. ${message}`);
     } finally {
       setIsDownloading(false);
       setDownloadingPhotoId(null);

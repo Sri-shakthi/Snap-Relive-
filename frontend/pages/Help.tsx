@@ -36,7 +36,7 @@ const Help: React.FC<HelpProps> = ({ hasSession }) => {
              Back
           </Link>
           <h2 className="text-3xl font-bold text-stone-900">How it works</h2>
-          <p className="text-stone-500">Everything you need to know about SnapRelive.</p>
+          <p className="text-stone-500">Everything you need to know about SnapShots.</p>
         </header>
 
         <div className="space-y-8">

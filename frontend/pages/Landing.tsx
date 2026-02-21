@@ -18,7 +18,7 @@ const Landing: React.FC<LandingProps> = ({ onSetEventId }) => {
           animate={{ opacity: 1, scale: 1 }}
           className="mb-10"
         >
-          <h1 className="brand-font text-5xl font-bold mb-4 text-stone-900">SnapRelive</h1>
+          <h1 className="brand-font text-5xl font-bold mb-4 text-stone-900">SnapShots</h1>
           <p className="text-stone-500 text-lg italic">"Find your moments instantly."</p>
         </motion.div>
 
@@ -47,7 +47,7 @@ const Landing: React.FC<LandingProps> = ({ onSetEventId }) => {
 
         <div className="mt-auto pt-12">
           <p className="text-[10px] text-stone-300 uppercase tracking-widest font-bold">
-            Powered by SnapRelive AI
+            Powered by SnapShots AI
           </p>
         </div>
       </div>
