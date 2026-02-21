@@ -87,6 +87,20 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
     setError('');
 
     try {
+      const directDownloadUrl = `${(import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:4000/api/v1'}/photos/${encodeURIComponent(photo.id)}/download?${new URLSearchParams({
+        userId,
+        eventId
+      }).toString()}`;
+
+      // On mobile, invoke native share immediately from the click gesture.
+      if (isMobileClient && navigator.share) {
+        await navigator.share({
+          title: 'SnapShots photo',
+          url: directDownloadUrl
+        });
+        return;
+      }
+
       const blob = await api.downloadPhotoBlob({
         photoId: photo.id,
         userId,
