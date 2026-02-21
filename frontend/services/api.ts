@@ -22,9 +22,17 @@ const apiFetch = async <T>(path: string, init?: RequestInit): Promise<T> => {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': '1',
       ...(init?.headers ?? {})
     }
   });
+
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const rawBody = await response.text();
+    const preview = rawBody.slice(0, 180).replace(/\s+/g, ' ').trim();
+    throw new Error(`Unexpected non-JSON response from API (${response.status}): ${preview}`);
+  }
 
   const payload = (await response.json()) as { success: boolean; data?: T } & ApiErrorPayload;
 
@@ -77,6 +85,13 @@ interface RefreshMatchesResponse {
   selfieId: string;
   status: 'PENDING' | 'PROCESSED' | 'FAILED';
   cooldownMs: number;
+}
+
+interface QueueStatusResponse {
+  queueDepth: number;
+  threshold: number;
+  highDemand: boolean;
+  message: string | null;
 }
 
 export const api = {
@@ -146,6 +161,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(input)
     });
+  },
+
+  getQueueStatus: async () => {
+    return apiFetch<QueueStatusResponse>('/queue/status');
   },
 
   createDownloadJob: async (input: { userId: string; eventId: string; photoIds: string[] }) => {

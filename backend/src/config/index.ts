@@ -4,6 +4,7 @@ export const config = {
   app: {
     port: env.port,
     apiPrefix: env.apiPrefix,
+    trustProxy: env.trustProxy,
     isProduction: env.nodeEnv === 'production'
   },
   aws: {
@@ -19,6 +20,7 @@ export const config = {
   },
   queue: {
     provider: env.queueProvider,
+    backpressureThreshold: env.queueBackpressureThreshold,
     maxAttempts: env.queueMaxAttempts,
     retryBaseMs: env.queueRetryBaseMs
   },

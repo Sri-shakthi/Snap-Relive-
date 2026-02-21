@@ -33,6 +33,8 @@ Prisma Migrate reads `DATABASE_URL` from `prisma.config.ts`.
 
 2. Fill required values:
 - `DATABASE_URL`
+- `TRUST_PROXY` (set `1` when running behind ngrok/load balancer/reverse proxy)
+- `DB_POOL_MAX` (recommended local: `20-40`, start with `30`)
 - `AWS_REGION`
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
@@ -132,6 +134,8 @@ BASE_URL="http://localhost:4000/api/v1" USER_ID="user_123" ./scripts/e2e-curl-fl
 ## Queue Notes
 - `QUEUE_PROVIDER=memory`: local fallback queue.
 - `QUEUE_PROVIDER=sqs`: production mode with external queue for horizontally-scaled API/worker instances.
+- `QUEUE_BACKPRESSURE_THRESHOLD`: queue depth threshold to trigger high-demand UI messaging.
+- Backpressure endpoint: `GET /api/v1/queue/status`.
 
 ## CloudFront Setup (Recommended)
 Use CloudFront for faster image delivery and better mobile performance.

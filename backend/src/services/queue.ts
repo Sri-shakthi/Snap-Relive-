@@ -1,5 +1,6 @@
 import {
   DeleteMessageCommand,
+  GetQueueAttributesCommand,
   ReceiveMessageCommand,
   SendMessageCommand,
   SQSClient
@@ -35,6 +36,7 @@ export interface QueueConsumer {
 export interface QueueService {
   enqueue: (job: Omit<QueueJob, 'id' | 'attempts'>) => Promise<void>;
   consume: (handler: (consumer: QueueConsumer) => Promise<void>) => Promise<void>;
+  getDepth: () => Promise<number>;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,6 +71,10 @@ class InMemoryQueueService implements QueueService {
         }
       });
     }
+  }
+
+  async getDepth(): Promise<number> {
+    return this.queue.length;
   }
 }
 
@@ -141,6 +147,19 @@ class SqsQueueService implements QueueService {
         }
       });
     }
+  }
+
+  async getDepth(): Promise<number> {
+    const response = await this.client.send(
+      new GetQueueAttributesCommand({
+        QueueUrl: this.queueUrl,
+        AttributeNames: ['ApproximateNumberOfMessages', 'ApproximateNumberOfMessagesNotVisible']
+      })
+    );
+
+    const visible = Number(response.Attributes?.ApproximateNumberOfMessages ?? 0);
+    const inFlight = Number(response.Attributes?.ApproximateNumberOfMessagesNotVisible ?? 0);
+    return visible + inFlight;
   }
 }
 

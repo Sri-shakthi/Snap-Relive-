@@ -16,6 +16,7 @@ const WaitingRoom: React.FC<WaitingRoomProps> = ({ eventId, userId }) => {
   const [matchCount, setMatchCount] = useState(0);
   const [isChecking, setIsChecking] = useState(false);
   const [refreshMessage, setRefreshMessage] = useState('');
+  const [backpressureMessage, setBackpressureMessage] = useState('');
 
   useEffect(() => {
     if (!eventId || !userId) {
@@ -39,6 +40,13 @@ const WaitingRoom: React.FC<WaitingRoomProps> = ({ eventId, userId }) => {
     try {
       const result = await api.getMatches({ userId, eventId, limit: 20 });
       setMatchCount(result.items.length);
+
+      const queueStatus = await api.getQueueStatus();
+      if (queueStatus.highDemand && queueStatus.message) {
+        setBackpressureMessage(queueStatus.message);
+      } else {
+        setBackpressureMessage('');
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -98,6 +106,11 @@ const WaitingRoom: React.FC<WaitingRoomProps> = ({ eventId, userId }) => {
         </div>
 
         <div className="w-full bg-white rounded-3xl border border-stone-100 p-8 space-y-6">
+          {backpressureMessage && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="text-sm font-semibold text-amber-800">{backpressureMessage}</p>
+            </div>
+          )}
           <h3 className="text-sm font-bold uppercase tracking-widest text-stone-400">Process Status</h3>
           <div className="space-y-6">
             {steps.map((step, index) => (

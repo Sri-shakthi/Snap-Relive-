@@ -53,12 +53,19 @@ const openApiSpec = {
     },
     '/downloads/{downloadId}': {
       get: { summary: 'Get ZIP download job status', responses: { '200': { description: 'OK' } } }
+    },
+    '/queue/status': {
+      get: { summary: 'Queue backpressure status', responses: { '200': { description: 'OK' } } }
     }
   }
 };
 
 export const createApp = () => {
   const app = express();
+
+  if (config.app.trustProxy !== undefined) {
+    app.set('trust proxy', config.app.trustProxy);
+  }
 
   app.use(requestIdMiddleware);
   app.use(helmet());

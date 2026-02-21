@@ -7,7 +7,9 @@ const envSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'test', 'production').default('development'),
   PORT: Joi.number().port().default(4000),
   API_PREFIX: Joi.string().default('/api/v1'),
+  TRUST_PROXY: Joi.string().allow('').optional(),
   DATABASE_URL: Joi.string().uri({ scheme: ['mysql'] }).required(),
+  DB_POOL_MAX: Joi.number().integer().min(1).max(200).default(30),
   AWS_REGION: Joi.string().required(),
   AWS_ACCESS_KEY_ID: Joi.string().required(),
   AWS_SECRET_ACCESS_KEY: Joi.string().required(),
@@ -17,6 +19,7 @@ const envSchema = Joi.object({
   CLOUDFRONT_BASE_URL: Joi.string().uri({ scheme: ['http', 'https'] }).allow('').optional(),
   REKOGNITION_COLLECTION_PREFIX: Joi.string().default('snapshots-event-'),
   QUEUE_PROVIDER: Joi.string().valid('memory', 'sqs').default('memory'),
+  QUEUE_BACKPRESSURE_THRESHOLD: Joi.number().integer().min(1).default(100),
   QUEUE_MAX_ATTEMPTS: Joi.number().integer().min(1).max(20).default(5),
   QUEUE_RETRY_BASE_MS: Joi.number().integer().min(100).default(500),
   AWS_SQS_QUEUE_URL: Joi.string().allow('').optional(),
@@ -33,11 +36,27 @@ if (error) {
   throw new Error(`Invalid environment variables: ${error.message}`);
 }
 
+const parseTrustProxy = (
+  raw: string | undefined
+): boolean | number | string | undefined => {
+  if (!raw || raw.trim() === '') {
+    return undefined;
+  }
+
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === 'true') return true;
+  if (normalized === 'false') return false;
+  if (/^\d+$/.test(normalized)) return Number(normalized);
+  return raw.trim();
+};
+
 export interface EnvConfig {
   nodeEnv: 'development' | 'test' | 'production';
   port: number;
   apiPrefix: string;
+  trustProxy?: boolean | number | string;
   databaseUrl: string;
+  dbPoolMax: number;
   awsRegion: string;
   awsAccessKeyId: string;
   awsSecretAccessKey: string;
@@ -47,6 +66,7 @@ export interface EnvConfig {
   cloudFrontBaseUrl?: string;
   rekognitionCollectionPrefix: string;
   queueProvider: 'memory' | 'sqs';
+  queueBackpressureThreshold: number;
   queueMaxAttempts: number;
   queueRetryBaseMs: number;
   awsSqsQueueUrl?: string;
@@ -61,7 +81,9 @@ export const env: EnvConfig = {
   nodeEnv: value.NODE_ENV,
   port: value.PORT,
   apiPrefix: value.API_PREFIX,
+  trustProxy: parseTrustProxy(value.TRUST_PROXY),
   databaseUrl: value.DATABASE_URL,
+  dbPoolMax: value.DB_POOL_MAX,
   awsRegion: value.AWS_REGION,
   awsAccessKeyId: value.AWS_ACCESS_KEY_ID,
   awsSecretAccessKey: value.AWS_SECRET_ACCESS_KEY,
@@ -71,6 +93,7 @@ export const env: EnvConfig = {
   cloudFrontBaseUrl: value.CLOUDFRONT_BASE_URL || undefined,
   rekognitionCollectionPrefix: value.REKOGNITION_COLLECTION_PREFIX,
   queueProvider: value.QUEUE_PROVIDER,
+  queueBackpressureThreshold: value.QUEUE_BACKPRESSURE_THRESHOLD,
   queueMaxAttempts: value.QUEUE_MAX_ATTEMPTS,
   queueRetryBaseMs: value.QUEUE_RETRY_BASE_MS,
   awsSqsQueueUrl: value.AWS_SQS_QUEUE_URL || undefined,
