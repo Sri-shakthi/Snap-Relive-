@@ -99,26 +99,33 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
       }
 
       const blob = await response.blob();
+      const filename = `snapshots-photo-${photo.id}.jpg`;
+
+      if (isMobileClient && navigator.share) {
+        const shareFile = new File([blob], filename, {
+          type: blob.type || 'image/jpeg'
+        });
+
+        if (!navigator.canShare || navigator.canShare({ files: [shareFile] })) {
+          await navigator.share({
+            files: [shareFile],
+            title: 'SnapShots photo'
+          });
+          return;
+        }
+      }
+
       const blobUrl = window.URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = blobUrl;
-      anchor.download = `snapshots-photo-${photo.id}.jpg`;
+      anchor.download = filename;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       window.URL.revokeObjectURL(blobUrl);
     } catch (requestError) {
-      // Fallback to direct navigation download without popup.
-      const anchor = document.createElement('a');
-      anchor.href = photo.downloadUrl;
-      anchor.target = '_self';
-      anchor.rel = 'noreferrer';
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-
       const message = requestError instanceof Error ? requestError.message : 'Unable to download photo.';
-      setError(`Direct download fallback used. ${message}`);
+      setError(`Unable to download photo. ${message}`);
     } finally {
       setIsDownloading(false);
       setDownloadingPhotoId(null);
