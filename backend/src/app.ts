@@ -27,6 +27,12 @@ const openApiSpec = {
     '/events': {
       post: { summary: 'Create event', responses: { '201': { description: 'Created' } } }
     },
+    '/events/{eventId}': {
+      get: { summary: 'Get event details', responses: { '200': { description: 'OK' } } }
+    },
+    '/users/register': {
+      post: { summary: 'Register guest for an event', responses: { '201': { description: 'Created' } } }
+    },
     '/selfies/presign': {
       post: { summary: 'Presign selfie upload', responses: { '200': { description: 'OK' } } }
     },
@@ -38,6 +44,24 @@ const openApiSpec = {
     },
     '/photos/confirm': {
       post: { summary: 'Confirm photo upload', responses: { '202': { description: 'Accepted' } } }
+    },
+    '/videos/multipart/init': {
+      post: { summary: 'Start multipart video upload', responses: { '200': { description: 'OK' } } }
+    },
+    '/videos/multipart/part-url': {
+      post: { summary: 'Get multipart upload part URL', responses: { '200': { description: 'OK' } } }
+    },
+    '/videos/multipart/complete': {
+      post: { summary: 'Complete multipart video upload', responses: { '202': { description: 'Accepted' } } }
+    },
+    '/videos/multipart/abort': {
+      post: { summary: 'Abort multipart video upload', responses: { '200': { description: 'OK' } } }
+    },
+    '/events/{eventId}/guests': {
+      get: { summary: 'List event guests', responses: { '200': { description: 'OK' } } }
+    },
+    '/events/{eventId}/guests/{userId}/whatsapp-link': {
+      post: { summary: 'Queue WhatsApp link delivery for a guest', responses: { '202': { description: 'Accepted' } } }
     },
     '/matches': {
       get: { summary: 'Get matches', responses: { '200': { description: 'OK' } } }

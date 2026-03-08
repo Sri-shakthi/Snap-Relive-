@@ -3,40 +3,67 @@ export enum Side {
   GROOM = 'GROOM'
 }
 
+export enum EventType {
+  MARRIAGE = 'MARRIAGE',
+  BIRTHDAY = 'BIRTHDAY',
+  CORPORATE = 'CORPORATE',
+  OTHER = 'OTHER'
+}
+
 export enum Confidence {
   HIGH = 'HIGH',
   POSSIBLE = 'POSSIBLE'
 }
 
+export enum MediaType {
+  IMAGE = 'IMAGE',
+  VIDEO = 'VIDEO'
+}
+
 export interface GuestDetails {
   fullName: string;
-  side: Side;
-  relation: string;
-  phoneNumber?: string;
+  side?: Side;
+  relation?: string;
+  phoneNumber: string;
+}
+
+export interface EventSummary {
+  id: string;
+  name: string;
+  eventType: EventType;
+  startsAt: string;
+  endsAt: string;
+  createdAt: string;
 }
 
 export interface Photo {
   id: string;
+  mediaType: MediaType;
   thumbnailUrl: string;
   previewUrl: string;
   downloadUrl: string;
   confidence: Confidence;
   timestamp: number;
+  videoTimestampMs?: number;
 }
 
 export interface MatchPhoto {
   id: string;
+  mediaType: MediaType;
   thumbnailUrl: string;
   previewUrl: string;
   downloadUrl: string;
   similarity: number;
   timestamp: number;
+  videoTimestampMs?: number;
 }
 
 export interface MatchResponseItem {
   matchId: string;
   photoId: string;
   similarity: number;
+  mediaType: MediaType;
+  videoTimestampMs?: number;
   photo: {
     bucket: string;
     s3Key: string;

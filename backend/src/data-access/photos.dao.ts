@@ -99,6 +99,34 @@ export const findPhotoIdsByFaceIds = async (eventId: string, faceIds: string[]) 
   });
 };
 
+export const findUsersByFaceIds = async (eventId: string, faceIds: string[]) => {
+  if (faceIds.length === 0) return [];
+
+  return prisma.photoFace.findMany({
+    where: {
+      eventId,
+      rekognitionFaceId: { in: faceIds }
+    },
+    select: {
+      rekognitionFaceId: true,
+      photo: {
+        select: {
+          id: true,
+          matches: {
+            where: {
+              eventId
+            },
+            select: {
+              userId: true,
+              similarity: true
+            }
+          }
+        }
+      }
+    }
+  });
+};
+
 export const getPhotosByIds = async (photoIds: string[]) => {
   if (photoIds.length === 0) return [];
   return prisma.photo.findMany({

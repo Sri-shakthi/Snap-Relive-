@@ -1,9 +1,11 @@
 import Joi from 'joi';
 import { AppError } from '../utils/errors.js';
 
+const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
 const presignPhotoSchema = Joi.object({
   eventId: Joi.string().trim().required(),
-  contentType: Joi.string().trim().required()
+  contentType: Joi.string().valid(...allowedImageTypes).required()
 });
 
 const confirmPhotoSchema = Joi.object({

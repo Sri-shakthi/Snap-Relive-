@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { api } from '../services/api';
-import { Confidence, Photo } from '../types';
+import { Confidence, MediaType, Photo } from '../types';
 
 interface GalleryProps {
   eventId: string;
@@ -49,11 +49,13 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
       setPhotos(
         data.items.map((item) => ({
           id: item.id,
+          mediaType: item.mediaType,
           thumbnailUrl: item.thumbnailUrl,
           previewUrl: item.previewUrl,
           downloadUrl: item.downloadUrl,
           confidence: Confidence.HIGH,
-          timestamp: item.timestamp
+          timestamp: item.timestamp,
+          videoTimestampMs: item.videoTimestampMs
         }))
       );
     } catch (requestError) {
@@ -87,6 +89,17 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
     setError('');
 
     try {
+      if (photo.mediaType === MediaType.VIDEO) {
+        const anchor = document.createElement('a');
+        anchor.href = photo.downloadUrl;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        return;
+      }
+
       const directDownloadUrl = `${(import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:4000/api/v1'}/photos/${encodeURIComponent(photo.id)}/download?${new URLSearchParams({
         userId,
         eventId
@@ -200,6 +213,12 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
                     loading="lazy"
                     className="w-full h-full object-cover"
                   />
+                  {photo.mediaType === MediaType.VIDEO && (
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-white text-xs font-semibold flex justify-between">
+                      <span>Video Match</span>
+                      <span>{photo.videoTimestampMs ? new Date(photo.videoTimestampMs).toISOString().slice(14, 19) : ''}</span>
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>
@@ -223,12 +242,20 @@ const Gallery: React.FC<GalleryProps> = ({ eventId, userId }) => {
               </div>
 
               <div className="flex-1 min-h-0 flex items-center justify-center px-3 pb-20">
-                <img
-                  src={viewingPhoto.previewUrl}
-                  alt="Viewer"
-                  className="w-full max-w-6xl object-contain rounded-2xl shadow-2xl max-h-[calc(100dvh-140px)]"
-                  style={{ touchAction: 'pinch-zoom', WebkitUserSelect: 'none' }}
-                />
+                {viewingPhoto.mediaType === MediaType.VIDEO ? (
+                  <video
+                    src={viewingPhoto.downloadUrl}
+                    controls
+                    className="w-full max-w-6xl object-contain rounded-2xl shadow-2xl max-h-[calc(100dvh-140px)]"
+                  />
+                ) : (
+                  <img
+                    src={viewingPhoto.previewUrl}
+                    alt="Viewer"
+                    className="w-full max-w-6xl object-contain rounded-2xl shadow-2xl max-h-[calc(100dvh-140px)]"
+                    style={{ touchAction: 'pinch-zoom', WebkitUserSelect: 'none' }}
+                  />
+                )}
               </div>
 
               <div className="sticky bottom-0 inset-x-0 p-4 flex justify-center bg-gradient-to-t from-black/60 to-transparent">

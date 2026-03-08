@@ -2,9 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
 import { api } from '../services/api';
+import { EventType } from '../types';
 
 const Organizer: React.FC = () => {
   const [eventName, setEventName] = useState('Snapshots Live Event');
+  const [eventType, setEventType] = useState<EventType>(EventType.MARRIAGE);
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -32,6 +34,7 @@ const Organizer: React.FC = () => {
 
       const result = await api.createEvent({
         name: eventName.trim() || 'Snapshots Live Event',
+        eventType,
         startsAt: start,
         endsAt: end
       });
@@ -64,6 +67,18 @@ const Organizer: React.FC = () => {
             className="w-full bg-white border border-stone-200 px-4 py-4 rounded-2xl outline-none focus:border-stone-400"
             placeholder="Wedding Reception"
           />
+
+          <label className="text-sm font-semibold text-stone-600 ml-1">Event Type</label>
+          <select
+            value={eventType}
+            onChange={(event) => setEventType(event.target.value as EventType)}
+            className="w-full bg-white border border-stone-200 px-4 py-4 rounded-2xl outline-none focus:border-stone-400"
+          >
+            <option value={EventType.MARRIAGE}>Marriage</option>
+            <option value={EventType.BIRTHDAY}>Birthday</option>
+            <option value={EventType.CORPORATE}>Corporate</option>
+            <option value={EventType.OTHER}>Other</option>
+          </select>
 
           <label className="text-sm font-semibold text-stone-600 ml-1">Starts At (optional)</label>
           <input

@@ -1,7 +1,9 @@
 import {
   DownloadJobCreateResponse,
   DownloadLinksResponse,
+  EventSummary,
   DownloadJobStatusResponse,
+  MediaType,
   MatchPhoto,
   MatchResponseItem
 } from '../types';
@@ -49,13 +51,53 @@ const apiFetch = async <T>(path: string, init?: RequestInit): Promise<T> => {
 };
 
 interface CreateEventResponse {
-  event: {
+  event: EventSummary;
+}
+
+interface GetEventResponse {
+  event: EventSummary;
+}
+
+interface RegisterGuestResponse {
+  user: {
     id: string;
-    name: string;
-    startsAt: string;
-    endsAt: string;
-    createdAt: string;
   };
+}
+
+interface EventGuestSummary {
+  userId: string;
+  fullName: string;
+  phone: string;
+  side?: 'BRIDE' | 'GROOM';
+  relation?: string;
+  matchCount: number;
+}
+
+interface EventGuestsResponse {
+  guests: EventGuestSummary[];
+}
+
+interface EventVideoStatusSummary {
+  id: string;
+  originalFileName: string;
+  status: 'INITIATED' | 'UPLOADED' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
+  displayStatus: 'UPLOADED' | 'ANALYZING' | 'MATCHED' | 'FAILED' | 'NO_MATCH';
+  matchCount: number;
+  matchedUsers: Array<{
+    userId: string;
+    fullName: string;
+    phone?: string;
+    similarity: number;
+    timestampMs: number;
+  }>;
+  durationSeconds: number;
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface EventVideoStatusesResponse {
+  videos: EventVideoStatusSummary[];
 }
 
 interface PresignResponse {
@@ -75,6 +117,26 @@ interface ConfirmPhotoResponse {
   status: 'PENDING' | 'PROCESSED' | 'FAILED';
 }
 
+interface VideoMultipartInitResponse {
+  uploadId: string;
+  bucket: string;
+  s3Key: string;
+}
+
+interface VideoMultipartPartResponse {
+  uploadUrl: string;
+  bucket: string;
+  s3Key: string;
+  expiresInSeconds: number;
+}
+
+interface VideoMultipartCompleteResponse {
+  videoUploadId: string;
+  status: 'INITIATED' | 'UPLOADED' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
+  bucket: string;
+  s3Key: string;
+}
+
 interface MatchesResponse {
   items: MatchResponseItem[];
   nextCursor: string | null;
@@ -85,6 +147,8 @@ interface RefreshMatchesResponse {
   selfieId: string;
   status: 'PENDING' | 'PROCESSED' | 'FAILED';
   cooldownMs: number;
+  burstLimit: number;
+  attemptsRemainingBeforeCooldown: number;
 }
 
 interface QueueStatusResponse {
@@ -95,8 +159,25 @@ interface QueueStatusResponse {
 }
 
 export const api = {
-  createEvent: async (input: { name: string; startsAt: string; endsAt: string }) => {
+  createEvent: async (input: { name: string; eventType: EventSummary['eventType']; startsAt: string; endsAt: string }) => {
     return apiFetch<CreateEventResponse>('/events', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
+  },
+
+  getEvent: async (eventId: string) => {
+    return apiFetch<GetEventResponse>(`/events/${encodeURIComponent(eventId)}`);
+  },
+
+  registerGuest: async (input: {
+    eventId: string;
+    fullName: string;
+    phone: string;
+    side?: 'BRIDE' | 'GROOM';
+    relation?: string;
+  }) => {
+    return apiFetch<RegisterGuestResponse>('/users/register', {
       method: 'POST',
       body: JSON.stringify(input)
     });
@@ -130,6 +211,54 @@ export const api = {
     });
   },
 
+  initVideoMultipartUpload: async (input: {
+    eventId: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    durationSeconds: number;
+  }) => {
+    return apiFetch<VideoMultipartInitResponse>('/videos/multipart/init', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
+  },
+
+  getVideoMultipartPartUrl: async (input: {
+    eventId: string;
+    s3Key: string;
+    uploadId: string;
+    partNumber: number;
+  }) => {
+    return apiFetch<VideoMultipartPartResponse>('/videos/multipart/part-url', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
+  },
+
+  completeVideoMultipartUpload: async (input: {
+    eventId: string;
+    s3Key: string;
+    uploadId: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    durationSeconds: number;
+    parts: Array<{ partNumber: number; etag: string }>;
+  }) => {
+    return apiFetch<VideoMultipartCompleteResponse>('/videos/multipart/complete', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
+  },
+
+  abortVideoMultipartUpload: async (input: { eventId: string; s3Key: string; uploadId: string }) => {
+    return apiFetch<{ aborted: boolean }>('/videos/multipart/abort', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    });
+  },
+
   getMatches: async (input: { userId: string; eventId: string; cursor?: string; limit?: number }) => {
     const params = new URLSearchParams({
       userId: input.userId,
@@ -143,11 +272,13 @@ export const api = {
 
     const items: MatchPhoto[] = response.items.map((item) => ({
       id: item.photoId,
+      mediaType: item.mediaType,
       thumbnailUrl: item.photo.thumbnailUrl,
       previewUrl: item.photo.previewUrl,
       downloadUrl: item.photo.downloadUrl,
       similarity: item.similarity,
-      timestamp: new Date(item.createdAt).getTime()
+      timestamp: new Date(item.createdAt).getTime(),
+      videoTimestampMs: item.videoTimestampMs
     }));
 
     return {
@@ -211,6 +342,23 @@ export const api = {
     }
 
     return response.blob();
+  },
+
+  getEventGuests: async (eventId: string) => {
+    return apiFetch<EventGuestsResponse>(`/events/${encodeURIComponent(eventId)}/guests`);
+  },
+
+  getEventVideoStatuses: async (eventId: string) => {
+    return apiFetch<EventVideoStatusesResponse>(`/events/${encodeURIComponent(eventId)}/videos/status`);
+  },
+
+  sendGuestWhatsAppLink: async (input: { eventId: string; userId: string }) => {
+    return apiFetch<{ queued: boolean; phoneNumber: string }>(
+      `/events/${encodeURIComponent(input.eventId)}/guests/${encodeURIComponent(input.userId)}/whatsapp-link`,
+      {
+        method: 'POST'
+      }
+    );
   }
 };
 

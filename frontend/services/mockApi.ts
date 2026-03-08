@@ -5,9 +5,11 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const MOCK_PHOTOS: Photo[] = Array.from({ length: 12 }).map((_, i) => ({
   id: `p-${i}`,
-  url: `https://picsum.photos/seed/${i + 100}/800/1000`,
+  thumbnailUrl: `https://picsum.photos/seed/${i + 100}/400/500`,
+  previewUrl: `https://picsum.photos/seed/${i + 100}/800/1000`,
+  downloadUrl: `https://picsum.photos/seed/${i + 100}/1200/1500`,
   confidence: i < 6 ? Confidence.HIGH : Confidence.POSSIBLE,
-  timestamp: Date.now() - (i * 1000 * 60 * 30),
+  timestamp: Date.now() - i * 1000 * 60 * 30
 }));
 
 export const mockApi = {

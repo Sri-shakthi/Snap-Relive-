@@ -15,7 +15,7 @@ const Help: React.FC<HelpProps> = ({ hasSession }) => {
     },
     {
       q: "How long does it take?",
-      a: "Matches usually appear within 5 minutes of a photographer uploading their batch of photos. This happens throughout the event!"
+      a: "Matches usually appear within 5 minutes of a photographer uploading their batch of photos. You can view them on the website, and SnapShots can also send selected photos to your WhatsApp."
     },
     {
       q: "Is my data private?",

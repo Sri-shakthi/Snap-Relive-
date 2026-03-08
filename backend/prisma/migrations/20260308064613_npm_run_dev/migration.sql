@@ -1,0 +1,3 @@
+-- No-op migration.
+-- The original SQL tried to alter Event.eventType before that column existed
+-- in the migration chain, which broke shadow database creation.

@@ -1,6 +1,14 @@
 import { Router } from 'express';
-import { confirmPhotoController, downloadPhotoController, presignPhotoController } from '../controllers/photos.controller.js';
-import { validatePhotoConfirm, validatePhotoDownload, validatePhotoPresign } from '../validation/validation-photo.js';
+import {
+  confirmPhotoController,
+  downloadPhotoController,
+  presignPhotoController
+} from '../controllers/photos.controller.js';
+import {
+  validatePhotoConfirm,
+  validatePhotoDownload,
+  validatePhotoPresign
+} from '../validation/validation-photo.js';
 
 const router = Router();
 

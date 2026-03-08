@@ -3,12 +3,14 @@ import { AppError } from '../utils/errors.js';
 
 const createEventSchema = Joi.object({
   name: Joi.string().trim().min(2).max(120).required(),
+  eventType: Joi.string().valid('MARRIAGE', 'BIRTHDAY', 'CORPORATE', 'OTHER').required(),
   startsAt: Joi.date().iso().required(),
   endsAt: Joi.date().iso().greater(Joi.ref('startsAt')).required()
 });
 
 export interface ValidateCreateEventInput {
   name: string;
+  eventType: 'MARRIAGE' | 'BIRTHDAY' | 'CORPORATE' | 'OTHER';
   startsAt: string;
   endsAt: string;
 }

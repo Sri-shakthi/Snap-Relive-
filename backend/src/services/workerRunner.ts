@@ -1,9 +1,16 @@
 import { config } from '../config/index.js';
-import { handleProcessDownloadJob, handleProcessPhotoJob, handleProcessSelfieJob } from './jobHandlers.js';
+import {
+  handleProcessDownloadJob,
+  handleProcessPhotoJob,
+  handleProcessSelfieJob,
+  handleProcessVideoJob,
+  handleProcessVideoResultJob,
+  handleProcessWhatsAppJob
+} from './jobHandlers.js';
 import { getQueueService } from './queue.js';
 
-export const startWorkerLoop = async (): Promise<void> => {
-  const queue = getQueueService();
+const runQueueLoop = async (channel: 'core' | 'whatsapp'): Promise<void> => {
+  const queue = getQueueService(channel);
 
   await queue.consume(async ({ job, ack, retry }) => {
     try {
@@ -13,6 +20,12 @@ export const startWorkerLoop = async (): Promise<void> => {
         await handleProcessSelfieJob(job);
       } else if (job.type === 'PROCESS_DOWNLOAD') {
         await handleProcessDownloadJob(job);
+      } else if (job.type === 'PROCESS_WHATSAPP') {
+        await handleProcessWhatsAppJob(job);
+      } else if (job.type === 'PROCESS_VIDEO') {
+        await handleProcessVideoJob(job);
+      } else if (job.type === 'PROCESS_VIDEO_RESULT') {
+        await handleProcessVideoResultJob(job);
       }
 
       await ack();
@@ -31,4 +44,8 @@ export const startWorkerLoop = async (): Promise<void> => {
       }
     }
   });
+};
+
+export const startWorkerLoop = async (): Promise<void> => {
+  await Promise.all([runQueueLoop('core'), runQueueLoop('whatsapp')]);
 };

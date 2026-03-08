@@ -17,12 +17,17 @@ import {
 } from '../data-access/photos.dao.js';
 import { upsertMatchResult } from '../data-access/matches.dao.js';
 import { findSelfieById, markSelfieFailed, markSelfieProcessed } from '../data-access/selfies.dao.js';
+import { findEventGuestByUserAndEvent } from '../data-access/eventGuests.dao.js';
 import { ensureCollection, indexFaces, searchFacesByImage } from './awsRekognition.js';
 import { buildImageVariants } from './imageVariants.js';
 import { getObjectAsBuffer, putObjectBuffer } from './awsS3.js';
 import { QueueJob } from './queue.js';
 import { AppError } from '../utils/errors.js';
 import { scheduleEventSelfieRematch } from './rematchScheduler.js';
+import { sendWhatsAppTextMessage } from './whatsapp.js';
+import { config } from '../config/index.js';
+import { processVideoUploadController } from '../controllers/videos.controller.js';
+import { processVideoResultController } from './videoResults.js';
 
 const stringifyError = (error: unknown) => (error instanceof Error ? error.message : 'Unknown error');
 
@@ -192,4 +197,49 @@ export const handleProcessDownloadJob = async (job: QueueJob): Promise<void> => 
     await markDownloadJobFailed(downloadJob.id, stringifyError(error));
     throw error;
   }
+};
+
+export const handleProcessWhatsAppJob = async (job: QueueJob): Promise<void> => {
+  if (!job.payload.userId || !job.payload.eventId) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'userId and eventId are required for PROCESS_WHATSAPP');
+  }
+
+  const guest = await findEventGuestByUserAndEvent(job.payload.userId, job.payload.eventId);
+  if (!guest) {
+    throw new AppError(404, 'NOT_FOUND', 'Guest not found for WhatsApp delivery');
+  }
+
+  const appLink = `${config.frontend.baseUrl.replace(/\/$/, '')}/#/access/${encodeURIComponent(job.payload.eventId)}/${encodeURIComponent(job.payload.userId)}`;
+  const text = config.whatsapp.textTemplate
+    .replace('{{name}}', guest.fullName)
+    .replace('{{appLink}}', appLink);
+
+  await sendWhatsAppTextMessage({
+    phoneNumber: guest.phone,
+    text
+  });
+};
+
+export const handleProcessVideoJob = async (job: QueueJob): Promise<void> => {
+  if (!job.payload.videoUploadId || !job.payload.eventId || !job.payload.bucket || !job.payload.s3Key) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'videoUploadId, eventId, bucket and s3Key are required for PROCESS_VIDEO');
+  }
+
+  await processVideoUploadController({
+    videoUploadId: job.payload.videoUploadId,
+    eventId: job.payload.eventId,
+    bucket: job.payload.bucket,
+    s3Key: job.payload.s3Key
+  });
+};
+
+export const handleProcessVideoResultJob = async (job: QueueJob): Promise<void> => {
+  if (!job.payload.videoUploadId) {
+    throw new AppError(400, 'VALIDATION_ERROR', 'videoUploadId is required for PROCESS_VIDEO_RESULT');
+  }
+
+  await processVideoResultController({
+    videoUploadId: job.payload.videoUploadId,
+    pollCount: job.payload.pollCount ?? 0
+  });
 };

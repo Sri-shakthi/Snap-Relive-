@@ -8,7 +8,14 @@ import {
 import { randomUUID } from 'node:crypto';
 import { config } from '../config/index.js';
 
-export type JobType = 'PROCESS_PHOTO' | 'PROCESS_SELFIE' | 'PROCESS_DOWNLOAD';
+export type JobType =
+  | 'PROCESS_PHOTO'
+  | 'PROCESS_SELFIE'
+  | 'PROCESS_DOWNLOAD'
+  | 'PROCESS_WHATSAPP'
+  | 'PROCESS_VIDEO'
+  | 'PROCESS_VIDEO_RESULT';
+export type QueueChannel = 'core' | 'whatsapp';
 
 export interface QueueJobPayload {
   photoId?: string;
@@ -18,6 +25,8 @@ export interface QueueJobPayload {
   userId?: string;
   bucket?: string;
   s3Key?: string;
+  videoUploadId?: string;
+  pollCount?: number;
 }
 
 export interface QueueJob {
@@ -34,7 +43,7 @@ export interface QueueConsumer {
 }
 
 export interface QueueService {
-  enqueue: (job: Omit<QueueJob, 'id' | 'attempts'>) => Promise<void>;
+  enqueue: (job: Omit<QueueJob, 'id' | 'attempts'>, options?: { delaySeconds?: number }) => Promise<void>;
   consume: (handler: (consumer: QueueConsumer) => Promise<void>) => Promise<void>;
   getDepth: () => Promise<number>;
 }
@@ -44,12 +53,21 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 class InMemoryQueueService implements QueueService {
   private queue: QueueJob[] = [];
 
-  async enqueue(job: Omit<QueueJob, 'id' | 'attempts'>): Promise<void> {
-    this.queue.push({
+  async enqueue(job: Omit<QueueJob, 'id' | 'attempts'>, options?: { delaySeconds?: number }): Promise<void> {
+    const nextJob = {
       ...job,
       id: randomUUID(),
       attempts: 0
-    });
+    };
+
+    if (options?.delaySeconds && options.delaySeconds > 0) {
+      setTimeout(() => {
+        this.queue.push(nextJob);
+      }, options.delaySeconds * 1000);
+      return;
+    }
+
+    this.queue.push(nextJob);
   }
 
   async consume(handler: (consumer: QueueConsumer) => Promise<void>): Promise<void> {
@@ -91,10 +109,11 @@ class SqsQueueService implements QueueService {
     });
   }
 
-  async enqueue(job: Omit<QueueJob, 'id' | 'attempts'>): Promise<void> {
+  async enqueue(job: Omit<QueueJob, 'id' | 'attempts'>, options?: { delaySeconds?: number }): Promise<void> {
     await this.client.send(
       new SendMessageCommand({
         QueueUrl: this.queueUrl,
+        DelaySeconds: options?.delaySeconds ? Math.min(900, options.delaySeconds) : undefined,
         MessageBody: JSON.stringify({ ...job, id: randomUUID(), attempts: 0 })
       })
     );
@@ -164,18 +183,45 @@ class SqsQueueService implements QueueService {
 }
 
 let queueService: QueueService | null = null;
+let whatsappQueueService: QueueService | null = null;
 
-export const getQueueService = (): QueueService => {
-  if (queueService) return queueService;
-
-  if (config.queue.provider === 'sqs') {
-    if (!config.aws.sqsQueueUrl) {
-      throw new Error('AWS_SQS_QUEUE_URL is required when QUEUE_PROVIDER=sqs');
+const getInMemoryQueueService = (channel: QueueChannel): QueueService => {
+  if (channel === 'whatsapp') {
+    if (!whatsappQueueService) {
+      whatsappQueueService = new InMemoryQueueService();
     }
-    queueService = new SqsQueueService(config.aws.sqsQueueUrl);
-    return queueService;
+    return whatsappQueueService;
   }
 
-  queueService = new InMemoryQueueService();
+  if (!queueService) {
+    queueService = new InMemoryQueueService();
+  }
   return queueService;
+};
+
+const getSqsQueueService = (channel: QueueChannel): QueueService => {
+  if (channel === 'whatsapp') {
+    if (whatsappQueueService) return whatsappQueueService;
+    const queueUrl = config.queue.whatsappQueueUrl || config.aws.sqsQueueUrl;
+    if (!queueUrl) {
+      throw new Error('AWS_SQS_WHATSAPP_QUEUE_URL or AWS_SQS_QUEUE_URL is required for WhatsApp queue');
+    }
+    whatsappQueueService = new SqsQueueService(queueUrl);
+    return whatsappQueueService;
+  }
+
+  if (queueService) return queueService;
+  if (!config.aws.sqsQueueUrl) {
+      throw new Error('AWS_SQS_QUEUE_URL is required when QUEUE_PROVIDER=sqs');
+  }
+  queueService = new SqsQueueService(config.aws.sqsQueueUrl);
+  return queueService;
+};
+
+export const getQueueService = (channel: QueueChannel = 'core'): QueueService => {
+  if (config.queue.provider === 'sqs') {
+    return getSqsQueueService(channel);
+  }
+
+  return getInMemoryQueueService(channel);
 };

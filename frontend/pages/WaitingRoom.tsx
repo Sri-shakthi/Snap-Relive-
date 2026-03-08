@@ -60,8 +60,13 @@ const WaitingRoom: React.FC<WaitingRoomProps> = ({ eventId, userId }) => {
 
     setRefreshMessage('');
     try {
-      await api.refreshMatches({ userId, eventId });
-      setRefreshMessage('Manual rematch queued. Checking updates...');
+      const result = await api.refreshMatches({ userId, eventId });
+      const attemptsLeft = result.attemptsRemainingBeforeCooldown;
+      setRefreshMessage(
+        attemptsLeft > 0
+          ? `Manual rematch queued. ${attemptsLeft} quick retr${attemptsLeft === 1 ? 'y' : 'ies'} left before cooldown.`
+          : 'Manual rematch queued. The next retry will respect cooldown.'
+      );
       await checkForMatches();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to queue rematch';
@@ -101,7 +106,7 @@ const WaitingRoom: React.FC<WaitingRoomProps> = ({ eventId, userId }) => {
           </div>
           <h2 className="text-3xl font-bold text-stone-900">You’re set!</h2>
           <p className="text-stone-500 max-w-xs mx-auto">
-            Matches appear after event photos are uploaded and processed.
+            Matches appear here after event photos are uploaded and processed, and SnapShots can also send selected photos to your WhatsApp.
           </p>
         </div>
 

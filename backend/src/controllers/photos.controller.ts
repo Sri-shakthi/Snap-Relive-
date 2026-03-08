@@ -30,7 +30,7 @@ export const presignPhotoController = async (input: PhotoPresignControllerInput)
     throw new AppError(404, 'NOT_FOUND', 'Event not found');
   }
 
-  const s3Key = `events/${input.eventId}/photos/${Date.now()}-${uuidv4()}`;
+  const s3Key = `uploads/images/events/${input.eventId}/${Date.now()}-${uuidv4()}`;
   const signed = await createPresignedPutUrl({
     s3Key,
     contentType: input.contentType

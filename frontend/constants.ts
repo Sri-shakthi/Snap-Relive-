@@ -1,12 +1,6 @@
-
 import { Side } from './types';
 
-export const EVENT_DATA = {
-  id: 'wedding-2024-arjun-meera',
-  name: 'Arjun & Meera Wedding',
-  date: 'June 24, 2024',
-  location: 'The Grand Palace, Udaipur'
-};
+export const APP_TAGLINE = 'Where Moments Find You.';
 
 export const RELATION_OPTIONS: Record<Side, string[]> = {
   [Side.BRIDE]: [

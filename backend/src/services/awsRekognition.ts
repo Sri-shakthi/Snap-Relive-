@@ -1,8 +1,10 @@
 import {
   CreateCollectionCommand,
+  GetFaceSearchCommand,
   IndexFacesCommand,
   RekognitionClient,
-  SearchFacesByImageCommand
+  SearchFacesByImageCommand,
+  StartFaceSearchCommand
 } from '@aws-sdk/client-rekognition';
 import { config } from '../config/index.js';
 
@@ -29,6 +31,78 @@ export interface FaceSearchRecord {
   faceId?: string;
   similarity?: number;
 }
+
+export interface VideoFaceSearchMatchRecord {
+  timestampMs: number;
+  faceId?: string;
+  similarity?: number;
+  boundingBox?: {
+    width?: number;
+    height?: number;
+    left?: number;
+    top?: number;
+  };
+}
+
+export const startFaceSearchForVideo = async (params: {
+  eventId: string;
+  bucket: string;
+  s3Key: string;
+}): Promise<string | undefined> => {
+  const response = await client.send(
+    new StartFaceSearchCommand({
+      CollectionId: getCollectionIdForEvent(params.eventId),
+      Video: {
+        S3Object: {
+          Bucket: params.bucket,
+          Name: params.s3Key
+        }
+      }
+    })
+  );
+
+  return response.JobId;
+};
+
+export const getFaceSearchResults = async (params: {
+  jobId: string;
+  nextToken?: string;
+}): Promise<{
+  status?: string;
+  nextToken?: string;
+  matches: VideoFaceSearchMatchRecord[];
+  statusMessage?: string;
+}> => {
+  const response = await client.send(
+    new GetFaceSearchCommand({
+      JobId: params.jobId,
+      NextToken: params.nextToken,
+      SortBy: 'TIMESTAMP'
+    })
+  );
+
+  return {
+    status: response.JobStatus,
+    nextToken: response.NextToken,
+    statusMessage: response.StatusMessage,
+    matches:
+      response.Persons?.flatMap((personMatch) =>
+        (personMatch.FaceMatches ?? []).map((match) => ({
+          timestampMs: personMatch.Timestamp ?? 0,
+          faceId: match.Face?.FaceId,
+          similarity: match.Similarity,
+          boundingBox: personMatch.Person?.Face?.BoundingBox
+            ? {
+                width: personMatch.Person.Face.BoundingBox.Width,
+                height: personMatch.Person.Face.BoundingBox.Height,
+                left: personMatch.Person.Face.BoundingBox.Left,
+                top: personMatch.Person.Face.BoundingBox.Top
+              }
+            : undefined
+        }))
+      ) ?? []
+  };
+};
 
 export const getCollectionIdForEvent = (eventId: string) => `${config.aws.collectionPrefix}${eventId}`;
 

@@ -36,17 +36,40 @@ const loadSession = (): PersistedSession => {
   }
 };
 
-const GuestJoinRoute: React.FC<{ onSetEventId: (eventId: string) => void }> = ({ onSetEventId }) => {
+const GuestJoinRoute: React.FC<{
+  currentEventId: string;
+  currentUserId: string;
+  onSetEventId: (eventId: string) => void;
+}> = ({ currentEventId, currentUserId, onSetEventId }) => {
   const navigate = useNavigate();
   const { eventId } = useParams();
 
   useEffect(() => {
     if (!eventId) return;
     onSetEventId(eventId);
+    if (currentEventId === eventId && currentUserId) {
+      navigate('/gallery', { replace: true });
+      return;
+    }
     navigate('/register', { replace: true });
-  }, [eventId, onSetEventId, navigate]);
+  }, [currentEventId, currentUserId, eventId, onSetEventId, navigate]);
 
   return <div className="p-6 text-sm text-stone-500">Opening event...</div>;
+};
+
+const GuestAccessRoute: React.FC<{
+  onRestoreSession: (eventId: string, userId: string) => void;
+}> = ({ onRestoreSession }) => {
+  const navigate = useNavigate();
+  const { eventId, userId } = useParams();
+
+  useEffect(() => {
+    if (!eventId || !userId) return;
+    onRestoreSession(eventId, userId);
+    navigate('/gallery', { replace: true });
+  }, [eventId, userId, onRestoreSession, navigate]);
+
+  return <div className="p-6 text-sm text-stone-500">Opening your gallery...</div>;
 };
 
 const PhotographerJoinRoute: React.FC<{ onSetEventId: (eventId: string) => void }> = ({ onSetEventId }) => {
@@ -94,12 +117,23 @@ const AppContent: React.FC = () => {
         <Route path="/" element={<Navigate to="/organizer" replace />} />
         <Route path="/organizer" element={<Organizer />} />
         <Route path="/guest" element={<Landing onSetEventId={setEventId} />} />
-        <Route path="/join/:eventId" element={<GuestJoinRoute onSetEventId={setEventId} />} />
+        <Route
+          path="/join/:eventId"
+          element={<GuestJoinRoute currentEventId={eventId} currentUserId={userId} onSetEventId={setEventId} />}
+        />
+        <Route
+          path="/access/:eventId/:userId"
+          element={<GuestAccessRoute onRestoreSession={(nextEventId, nextUserId) => {
+            setEventId(nextEventId);
+            setUserId(nextUserId);
+          }} />}
+        />
         <Route
           path="/register"
           element={<Registration eventId={eventId} onComplete={(details, nextUserId) => {
             setGuestDetails(details);
             setUserId(nextUserId);
+            setSelfie(null);
           }} />}
         />
         <Route
