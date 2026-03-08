@@ -1,8 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
-import { Prisma } from '@prisma/client';
+import pkg from '@prisma/client';
 import Joi from 'joi';
 import { config } from '../config/index.js';
 import { AppError, isAppError } from '../utils/errors.js';
+
+const { Prisma } = pkg;
 
 const isAwsError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') {

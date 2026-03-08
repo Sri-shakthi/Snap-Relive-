@@ -1,5 +1,8 @@
-import { Prisma, ProcessingStatus } from '@prisma/client';
+import pkg from '@prisma/client';
+import type { Prisma as PrismaNamespace } from '@prisma/client';
 import { prisma } from './prisma.js';
+
+const { Prisma, ProcessingStatus } = pkg;
 
 export interface UpsertPhotoInput {
   eventId: string;
@@ -11,7 +14,7 @@ export interface CreatePhotoFaceInput {
   photoId: string;
   eventId: string;
   rekognitionFaceId?: string;
-  boundingBox?: Prisma.InputJsonValue;
+  boundingBox?: PrismaNamespace.InputJsonValue;
   confidence: number;
 }
 

@@ -1,4 +1,4 @@
-import { DownloadJobStatus } from '@prisma/client';
+import pkg from '@prisma/client';
 import {
   createDownloadJob,
   findDownloadJobById,
@@ -7,6 +7,8 @@ import {
 import { createAssetUrl } from '../services/awsS3.js';
 import { getQueueService } from '../services/queue.js';
 import { AppError } from '../utils/errors.js';
+
+const { DownloadJobStatus } = pkg;
 
 export interface CreateDownloadControllerInput {
   userId: string;

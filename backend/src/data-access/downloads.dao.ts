@@ -1,5 +1,8 @@
-import { DownloadJobStatus, Prisma } from '@prisma/client';
+import pkg from '@prisma/client';
+import type { Prisma as PrismaNamespace } from '@prisma/client';
 import { prisma } from './prisma.js';
+
+const { DownloadJobStatus, Prisma } = pkg;
 
 export interface CreateDownloadJobInput {
   userId: string;
@@ -73,7 +76,7 @@ export const getDownloadablePhotos = async (params: { eventId: string; photoIds:
   });
 };
 
-export const castPhotoIdsFromJson = (value: Prisma.JsonValue): string[] => {
+export const castPhotoIdsFromJson = (value: PrismaNamespace.JsonValue): string[] => {
   if (!Array.isArray(value)) {
     return [];
   }

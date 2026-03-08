@@ -1,5 +1,7 @@
-import { ProcessingStatus } from '@prisma/client';
+import pkg from '@prisma/client';
 import { prisma } from './prisma.js';
+
+const { ProcessingStatus } = pkg;
 
 export interface UpsertSelfieInput {
   userId: string;

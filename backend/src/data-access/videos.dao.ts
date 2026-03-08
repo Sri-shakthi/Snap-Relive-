@@ -1,5 +1,8 @@
-import { Prisma } from '@prisma/client';
+import pkg from '@prisma/client';
+import type { Prisma as PrismaNamespace } from '@prisma/client';
 import { prisma } from './prisma.js';
+
+const { Prisma } = pkg;
 
 export interface CreateVideoUploadInput {
   eventId: string;
@@ -17,7 +20,7 @@ export interface UpsertVideoMatchInput {
   userId: string;
   timestampMs: number;
   similarity: number;
-  boundingBox?: Prisma.InputJsonValue;
+  boundingBox?: PrismaNamespace.InputJsonValue;
   thumbnailS3Key?: string;
   clipS3Key?: string;
 }
